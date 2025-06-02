@@ -141,14 +141,15 @@ class GraphWidget(QWidget, Graph):
         
         # Сохраняем лучший путь и расстояние, но не отображаем их
         if current_best[1] < self.best_distance:
-            self.best_path, self.best_distance = current_best
+            self.best_path = [int(x) for x in current_best[0]]  # Конвертируем в обычные Python числа
+            self.best_distance = float(current_best[1])  # Конвертируем в обычное Python число
         
         # Обновляем информацию об итерации
         if hasattr(self, 'parent') and self.parent():
             main_window = self.parent().parent()
             if hasattr(main_window, 'result_text'):
                 text = f"Выполняется итерация: {iteration + 1}\n\n"
-                text += f"Текущий лучший путь:\n{self.best_path + [self.best_path[0]]}\n"
+                text += f"Текущий лучший путь:\n{[int(x) for x in self.best_path] + [self.best_path[0]]}\n"
                 text += f"Длина пути: {self.best_distance:.2f}"
                 main_window.result_text.setText(text)
         
@@ -177,8 +178,10 @@ class GraphWidget(QWidget, Graph):
             if hasattr(self, 'parent') and self.parent():
                 main_window = self.parent().parent()
                 if hasattr(main_window, 'result_text'):
-                    text = f"Найден оптимальный путь: {self.best_path + [self.best_path[0]]}\n"
-                    text += f"Длина пути: {self.best_distance:.2f}"
+                    # Конвертируем значения в обычные Python числа
+                    path_display = [int(x) for x in self.best_path] + [int(self.best_path[0])]
+                    text = f"Найден оптимальный путь: {path_display}\n"
+                    text += f"Длина пути: {float(self.best_distance):.2f}"
                     main_window.result_text.setText(text)
             
             # Подготовка к анимации
@@ -187,7 +190,7 @@ class GraphWidget(QWidget, Graph):
             self.edge_animation_step = 0
             
             # Создаем список ребер для анимации
-            path = self.best_path + [self.best_path[0]]  # Замыкаем путь
+            path = [int(x) for x in self.best_path] + [int(self.best_path[0])]  # Замыкаем путь и конвертируем в обычные числа
             self.edges_to_draw = [(path[i], path[i+1]) for i in range(len(path)-1)]
             
             # Запускаем анимацию
@@ -567,10 +570,13 @@ class MainWindow(QMainWindow):
                 # Завершаем анимацию и показываем финальный результат
                 self.graph_widget.is_animating = False
                 
+                # Конвертируем значения в обычные Python числа
+                path_display = [int(x) for x in best_path] + [int(best_path[0])]
+                
                 # Формируем информацию о найденном решении
                 result_text = "Алгоритм завершил работу\n\n"
-                result_text += f"Найден оптимальный путь:\n{best_path + [best_path[0]]}\n\n"
-                result_text += f"Длина пути: {best_distance:.2f}"
+                result_text += f"Найден оптимальный путь:\n{path_display}\n\n"
+                result_text += f"Длина пути: {float(best_distance):.2f}"
                 self.result_text.setText(result_text)
                 
                 # Запускаем анимацию отрисовки пути
@@ -578,10 +584,12 @@ class MainWindow(QMainWindow):
             else:
                 # Если алгоритм был остановлен, выводим текущий лучший результат
                 self.graph_widget.is_animating = False
-                if best_path:
+                if best_path is not None:
+                    # Конвертируем значения в обычные Python числа
+                    path_display = [int(x) for x in best_path] + [int(best_path[0])]
                     result_text = "Алгоритм остановлен пользователем\n\n"
-                    result_text += f"Текущий лучший путь:\n{best_path + [best_path[0]]}\n\n"
-                    result_text += f"Длина пути: {best_distance:.2f}"
+                    result_text += f"Текущий лучший путь:\n{path_display}\n\n"
+                    result_text += f"Длина пути: {float(best_distance):.2f}"
                     self.result_text.setText(result_text)
                     # Показываем анимацию текущего лучшего пути
                     self.graph_widget.show_final_result()
