@@ -121,6 +121,7 @@ class AntColonyTSP:
         """
         best_path = None
         best_distance = float('inf')
+        start_time = time.time()  # Начинаем замер времени
         
         for iteration in range(self.n_iterations):
             # Проверяем флаг остановки
@@ -158,5 +159,6 @@ class AntColonyTSP:
             # Добавляем задержку если она указана
             if self.delay:
                 time.sleep(self.delay)
-        
-        return best_path, best_distance 
+
+        execution_time = time.time() - start_time  # Завершаем замер времени
+        return best_path, best_distance, execution_time 

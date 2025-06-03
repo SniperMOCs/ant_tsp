@@ -1,0 +1,4 @@
+PyQt6==6.6.1
+numpy==1.26.3
+pyinstaller==6.3.0 
+matplotlib==3.8.0

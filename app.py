@@ -1,6 +1,7 @@
 import sys
 import math
 import random
+import time
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, 
                            QPushButton, QVBoxLayout, QHBoxLayout,
                            QTextEdit, QSizePolicy)
@@ -9,6 +10,7 @@ from PyQt6.QtGui import (QPainter, QPen, QColor, QFont,
                         QBrush, qRgb)
 import numpy as np
 from ant_colony_tsp import AntColonyTSP
+from analytics_window import AnalyticsWindow
 
 def read_distances(filename):
     distances = []
@@ -141,16 +143,17 @@ class GraphWidget(QWidget, Graph):
         
         # Сохраняем лучший путь и расстояние, но не отображаем их
         if current_best[1] < self.best_distance:
-            self.best_path = [int(x) for x in current_best[0]]  # Конвертируем в обычные Python числа
-            self.best_distance = float(current_best[1])  # Конвертируем в обычное Python число
+            self.best_path = current_best[0]
+            self.best_distance = current_best[1]
         
         # Обновляем информацию об итерации
         if hasattr(self, 'parent') and self.parent():
             main_window = self.parent().parent()
             if hasattr(main_window, 'result_text'):
                 text = f"Выполняется итерация: {iteration + 1}\n\n"
-                text += f"Текущий лучший путь:\n{[int(x) for x in self.best_path] + [self.best_path[0]]}\n"
-                text += f"Длина пути: {self.best_distance:.2f}"
+                text += f"Текущий лучший путь:\n{self.best_path + [self.best_path[0]]}\n"
+                text += f"Длина пути: {self.best_distance:.2f}\n"
+                text += f"Прошло времени: {time.time() - main_window.aco.start_time:.2f} сек."
                 main_window.result_text.setText(text)
         
         self.update()
@@ -348,6 +351,9 @@ class MainWindow(QMainWindow):
 
         # Добавляем флаг для отслеживания состояния алгоритма
         self.is_running = False
+        
+        # Создаем окно аналитики
+        self.analytics_window = None
 
         # Установка темного фона для главного окна
         self.setStyleSheet("""
@@ -441,19 +447,24 @@ class MainWindow(QMainWindow):
         # Создание кнопок
         self.load_button = QPushButton("Прочитать файлы")
         self.animate_button = QPushButton("Начать анимацию")
+        self.analytics_button = QPushButton("Графики")  # Новая кнопка
         self.animate_button.setEnabled(False)
+        self.analytics_button.setEnabled(False)  # Изначально отключена
 
         # Установка шрифта для кнопок
         self.load_button.setFont(font)
         self.animate_button.setFont(font)
+        self.analytics_button.setFont(font)
         
         # Установка фиксированной высоты для кнопок
         self.load_button.setFixedHeight(40)
         self.animate_button.setFixedHeight(40)
+        self.analytics_button.setFixedHeight(40)
 
         # Добавление кнопок в layout
         button_layout.addWidget(self.load_button)
         button_layout.addWidget(self.animate_button)
+        button_layout.addWidget(self.analytics_button)
         
         # Устанавливаем политику размера для контейнера кнопок
         button_container.setSizePolicy(
@@ -470,11 +481,22 @@ class MainWindow(QMainWindow):
         # Подключение обработчиков событий
         self.load_button.clicked.connect(self.load_files)
         self.animate_button.clicked.connect(self.start_animation)
+        self.analytics_button.clicked.connect(self.show_analytics)  # Новый обработчик
 
         # Инициализация переменных для данных
         self.distances = None
         self.parameters = None
         self.aco = None
+
+    def show_analytics(self):
+        """Показать окно аналитики"""
+        # Скрываем главное окно перед созданием окна аналитики
+        self.hide()
+        QApplication.processEvents()  # Обрабатываем все отложенные события
+        
+        if self.analytics_window is None:
+            self.analytics_window = AnalyticsWindow(self)
+        self.analytics_window.show()  # Показываем окно аналитики
 
     def load_files(self):
         try:
@@ -514,8 +536,9 @@ class MainWindow(QMainWindow):
                 n_ants=int(self.parameters['n_ants'])
             )
             
-            # Активация кнопки анимации
+            # Активация кнопок
             self.animate_button.setEnabled(True)
+            self.analytics_button.setEnabled(True)  # Активируем кнопку аналитики
             
         except Exception as e:
             self.result_text.setText(f"Ошибка при чтении файлов: {e}")
@@ -563,20 +586,18 @@ class MainWindow(QMainWindow):
             )
 
             # Решение задачи
-            best_path, best_distance = self.aco.solve(stop_flag=lambda: not self.is_running)
+            best_path, best_distance, execution_time = self.aco.solve(stop_flag=lambda: not self.is_running)
             
             # Если алгоритм не был остановлен, показываем результат
             if self.is_running:
                 # Завершаем анимацию и показываем финальный результат
                 self.graph_widget.is_animating = False
                 
-                # Конвертируем значения в обычные Python числа
-                path_display = [int(x) for x in best_path] + [int(best_path[0])]
-                
                 # Формируем информацию о найденном решении
                 result_text = "Алгоритм завершил работу\n\n"
-                result_text += f"Найден оптимальный путь:\n{path_display}\n\n"
-                result_text += f"Длина пути: {float(best_distance):.2f}"
+                result_text += f"Найден оптимальный путь:\n{best_path + [best_path[0]]}\n\n"
+                result_text += f"Длина пути: {best_distance:.2f}\n"
+                result_text += f"Время выполнения: {execution_time:.2f} сек."
                 self.result_text.setText(result_text)
                 
                 # Запускаем анимацию отрисовки пути
@@ -585,11 +606,10 @@ class MainWindow(QMainWindow):
                 # Если алгоритм был остановлен, выводим текущий лучший результат
                 self.graph_widget.is_animating = False
                 if best_path is not None:
-                    # Конвертируем значения в обычные Python числа
-                    path_display = [int(x) for x in best_path] + [int(best_path[0])]
                     result_text = "Алгоритм остановлен пользователем\n\n"
-                    result_text += f"Текущий лучший путь:\n{path_display}\n\n"
-                    result_text += f"Длина пути: {float(best_distance):.2f}"
+                    result_text += f"Текущий лучший путь:\n{best_path + [best_path[0]]}\n\n"
+                    result_text += f"Длина пути: {best_distance:.2f}\n"
+                    result_text += f"Время до остановки: {execution_time:.2f} сек."
                     self.result_text.setText(result_text)
                     # Показываем анимацию текущего лучшего пути
                     self.graph_widget.show_final_result()
