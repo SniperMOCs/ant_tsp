@@ -143,7 +143,7 @@ class GraphWidget(QWidget, Graph):
         
         # Сохраняем лучший путь и расстояние, но не отображаем их
         if current_best[1] < self.best_distance:
-            self.best_path = current_best[0]
+            self.best_path = [int(x) for x in current_best[0]]
             self.best_distance = current_best[1]
         
         # Обновляем информацию об итерации
@@ -600,6 +600,9 @@ class MainWindow(QMainWindow):
                 # Завершаем анимацию и показываем финальный результат
                 self.graph_widget.is_animating = False
                 
+                # Конвертируем путь в стандартные Python числа
+                best_path = [int(x) for x in best_path]
+                
                 # Формируем информацию о найденном решении
                 result_text = "Алгоритм завершил работу\n\n"
                 result_text += f"Найден оптимальный путь:\n{best_path + [best_path[0]]}\n\n"
@@ -613,6 +616,9 @@ class MainWindow(QMainWindow):
                 # Если алгоритм был остановлен, выводим текущий лучший результат
                 self.graph_widget.is_animating = False
                 if best_path is not None:
+                    # Конвертируем путь в стандартные Python числа
+                    best_path = [int(x) for x in best_path]
+                    
                     result_text = "Алгоритм остановлен пользователем\n\n"
                     result_text += f"Текущий лучший путь:\n{best_path + [best_path[0]]}\n\n"
                     result_text += f"Длина пути: {best_distance:.2f}\n"
