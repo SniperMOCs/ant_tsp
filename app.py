@@ -494,8 +494,10 @@ class MainWindow(QMainWindow):
         self.hide()
         QApplication.processEvents()  # Обрабатываем все отложенные события
         
-        if self.analytics_window is None:
-            self.analytics_window = AnalyticsWindow(self)
+        # Создаем новое окно аналитики каждый раз
+        if self.analytics_window is not None:
+            self.analytics_window.close()
+        self.analytics_window = AnalyticsWindow(self)
         self.analytics_window.show()  # Показываем окно аналитики
 
     def load_files(self):
@@ -503,6 +505,11 @@ class MainWindow(QMainWindow):
             # Читаем новые данные
             self.distances = read_distances('distances.txt')
             self.parameters = read_parameters('parameters.txt')
+            
+            # Если окно аналитики существует, закрываем его
+            if self.analytics_window is not None:
+                self.analytics_window.close()
+                self.analytics_window = None
             
             # Формируем информацию о прочитанных данных
             info_text = "Файлы успешно прочитаны:\n\n"

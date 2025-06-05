@@ -8,7 +8,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
 from analytics_utils import (analyze_ants_impact, analyze_decay_impact,
-                           analyze_alpha_beta_impact, analyze_convergence)
+                           analyze_alpha_impact, analyze_beta_impact,
+                           analyze_parameters_comparison)
 
 class AnalyticsWindow(QMainWindow):
     def __init__(self, main_window):
@@ -40,28 +41,34 @@ class AnalyticsWindow(QMainWindow):
     def collect_data(self):
         """Сбор данных для всех графиков"""
         # Данные для графика количества муравьев
-        self.progress_dialog.setLabelText("Анализ влияния количества муравьев (1/4)...")
+        self.progress_dialog.setLabelText("Анализ влияния количества муравьев (1/5)...")
         self.progress_dialog.setValue(0)
         QApplication.processEvents()
         self.ants_data = analyze_ants_impact(self.distances, self.parameters)
         
         # Данные для графика коэффициента испарения
-        self.progress_dialog.setLabelText("Анализ влияния коэффициента испарения (2/4)...")
-        self.progress_dialog.setValue(25)
+        self.progress_dialog.setLabelText("Анализ влияния коэффициента испарения (2/5)...")
+        self.progress_dialog.setValue(20)
         QApplication.processEvents()
         self.decay_data = analyze_decay_impact(self.distances, self.parameters)
         
-        # Данные для графика alpha и beta
-        self.progress_dialog.setLabelText("Анализ влияния параметров alpha и beta (3/4)...")
-        self.progress_dialog.setValue(50)
+        # Данные для графика alpha
+        self.progress_dialog.setLabelText("Анализ влияния параметра alpha (3/5)...")
+        self.progress_dialog.setValue(40)
         QApplication.processEvents()
-        self.alpha_beta_data = analyze_alpha_beta_impact(self.distances, self.parameters)
+        self.alpha_data = analyze_alpha_impact(self.distances, self.parameters)
         
-        # Данные для графика сходимости
-        self.progress_dialog.setLabelText("Анализ сходимости алгоритма (4/4)...")
-        self.progress_dialog.setValue(75)
+        # Данные для графика beta
+        self.progress_dialog.setLabelText("Анализ влияния параметра beta (4/5)...")
+        self.progress_dialog.setValue(60)
         QApplication.processEvents()
-        self.convergence_data = analyze_convergence(self.distances, self.parameters)
+        self.beta_data = analyze_beta_impact(self.distances, self.parameters)
+        
+        # Данные для графика сравнения параметров
+        self.progress_dialog.setLabelText("Анализ сравнения параметров (5/5)...")
+        self.progress_dialog.setValue(80)
+        QApplication.processEvents()
+        self.comparison_data = analyze_parameters_comparison(self.distances, self.parameters)
         
         self.progress_dialog.setValue(100)
 
@@ -119,10 +126,11 @@ class AnalyticsWindow(QMainWindow):
         
         # Создание кнопок
         self.buttons = {
-            'ants': QPushButton("Влияние количества муравьев"),
+            'ants': QPushButton("Влияние количества\nмуравьев"),
             'decay': QPushButton("Влияние коэффициента\nиспарения"),
-            'alpha_beta': QPushButton("Влияние alpha и beta"),
-            'convergence': QPushButton("Сравнение параметров")
+            'alpha': QPushButton("Влияние параметра\nalpha"),
+            'beta': QPushButton("Влияние параметра\nbeta"),
+            'comparison': QPushButton("Сравнение\nпараметров")
         }
         
         # Настройка кнопок
@@ -142,8 +150,9 @@ class AnalyticsWindow(QMainWindow):
         # Подключение сигналов кнопок
         self.buttons['ants'].clicked.connect(lambda: self.show_plot(0))
         self.buttons['decay'].clicked.connect(lambda: self.show_plot(1))
-        self.buttons['alpha_beta'].clicked.connect(lambda: self.show_plot(2))
-        self.buttons['convergence'].clicked.connect(lambda: self.show_plot(3))
+        self.buttons['alpha'].clicked.connect(lambda: self.show_plot(2))
+        self.buttons['beta'].clicked.connect(lambda: self.show_plot(3))
+        self.buttons['comparison'].clicked.connect(lambda: self.show_plot(4))
         
         # Добавление виджетов в горизонтальный layout
         content_layout.addWidget(button_panel, stretch=1)
@@ -174,8 +183,9 @@ class AnalyticsWindow(QMainWindow):
         """Создание виджетов с графиками используя уже собранные данные"""
         self.create_ants_plot()
         self.create_decay_plot()
-        self.create_alpha_beta_plot()
-        self.create_convergence_plot()
+        self.create_alpha_plot()
+        self.create_beta_plot()
+        self.create_comparison_plot()
 
     def create_ants_plot(self):
         fig = Figure(facecolor='white')
@@ -191,13 +201,22 @@ class AnalyticsWindow(QMainWindow):
         ax.title.set_color('black')
         
         # Используем собранные данные
-        n_ants_values, time_results = self.ants_data
+        iterations, convergence_data, labels = self.ants_data
         
-        ax.plot(n_ants_values, time_results, 'o-', color='#2980b9')
-        ax.set_xlabel('Количество муравьев')
-        ax.set_ylabel('Время выполнения (сек)')
-        ax.set_title('Зависимость времени выполнения от количества муравьев')
-        ax.grid(True, color='#cccccc')
+        # Задаем цвета для линий (больше цветов для безопасности)
+        colors = ['#2980b9', '#e74c3c', '#27ae60', '#8e44ad', '#f39c12', '#16a085', '#c0392b', '#2c3e50']
+        
+        # Строим график для каждого количества муравьев
+        for i, (data, label) in enumerate(zip(convergence_data, labels)):
+            ax.plot(iterations, data, '-', label=label, color=colors[i % len(colors)], linewidth=2)
+        
+        ax.set_xlabel('Итерация')
+        ax.set_ylabel('Длина пути')
+        ax.set_title('Сходимость алгоритма для разного количества муравьев')
+        ax.grid(True, color='#cccccc', linestyle='--', alpha=0.7)
+        
+        # Настраиваем легенду
+        ax.legend(loc='upper right', fontsize='medium')
         
         self.plot_stack.addWidget(canvas)
 
@@ -215,17 +234,26 @@ class AnalyticsWindow(QMainWindow):
         ax.title.set_color('black')
         
         # Используем собранные данные
-        decay_values, time_results = self.decay_data
+        iterations, convergence_data, labels = self.decay_data
         
-        ax.plot(decay_values, time_results, 'o-', color='#27ae60')
-        ax.set_xlabel('Коэффициент испарения')
-        ax.set_ylabel('Время выполнения (сек)')
-        ax.set_title('Зависимость времени выполнения от коэффициента испарения')
-        ax.grid(True, color='#cccccc')
+        # Задаем цвета для линий (больше цветов для безопасности)
+        colors = ['#2980b9', '#e74c3c', '#27ae60', '#8e44ad', '#f39c12', '#16a085', '#c0392b', '#2c3e50']
+        
+        # Строим график для каждого значения коэффициента испарения
+        for i, (data, label) in enumerate(zip(convergence_data, labels)):
+            ax.plot(iterations, data, '-', label=label, color=colors[i % len(colors)], linewidth=2)
+        
+        ax.set_xlabel('Итерация')
+        ax.set_ylabel('Длина пути')
+        ax.set_title('Сходимость алгоритма для разных коэффициентов испарения')
+        ax.grid(True, color='#cccccc', linestyle='--', alpha=0.7)
+        
+        # Настраиваем легенду
+        ax.legend(loc='upper right', fontsize='medium')
         
         self.plot_stack.addWidget(canvas)
 
-    def create_alpha_beta_plot(self):
+    def create_alpha_plot(self):
         fig = Figure(facecolor='white')
         canvas = FigureCanvas(fig)
         ax = fig.add_subplot(111)
@@ -239,20 +267,26 @@ class AnalyticsWindow(QMainWindow):
         ax.title.set_color('black')
         
         # Используем собранные данные
-        alpha_values, beta_values, alpha_results, beta_results = self.alpha_beta_data
+        iterations, convergence_data, labels = self.alpha_data
         
-        ax.plot(alpha_values, alpha_results, 'o-', label='Alpha', color='#c0392b')
-        ax.plot(beta_values, beta_results, 'o-', label='Beta', color='#f39c12')
-        ax.set_xlabel('Значение параметра')
-        ax.set_ylabel('Длина лучшего пути')
-        ax.set_title('Влияние параметров alpha и beta на качество решения')
-        ax.legend()
-        ax.grid(True, color='#cccccc')
+        # Задаем цвета для линий (больше цветов для безопасности)
+        colors = ['#2980b9', '#e74c3c', '#27ae60', '#8e44ad', '#f39c12', '#16a085', '#c0392b', '#2c3e50']
+        
+        # Строим график для каждого значения alpha
+        for i, (data, label) in enumerate(zip(convergence_data, labels)):
+            ax.plot(iterations, data, '-', label=label, color=colors[i % len(colors)], linewidth=2)
+        
+        ax.set_xlabel('Итерация')
+        ax.set_ylabel('Длина пути')
+        ax.set_title('Сходимость алгоритма для разных значений alpha')
+        ax.grid(True, color='#cccccc', linestyle='--', alpha=0.7)
+        
+        # Настраиваем легенду
+        ax.legend(loc='upper right', fontsize='medium')
         
         self.plot_stack.addWidget(canvas)
 
-    def create_convergence_plot(self):
-        """Создание графика сходимости алгоритма"""
+    def create_beta_plot(self):
         fig = Figure(facecolor='white')
         canvas = FigureCanvas(fig)
         ax = fig.add_subplot(111)
@@ -266,23 +300,55 @@ class AnalyticsWindow(QMainWindow):
         ax.title.set_color('black')
         
         # Используем собранные данные
-        iterations, convergence_data, labels = self.convergence_data
+        iterations, convergence_data, labels = self.beta_data
         
-        # Задаем цвета для линий
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+        # Задаем цвета для линий (больше цветов для безопасности)
+        colors = ['#2980b9', '#e74c3c', '#27ae60', '#8e44ad', '#f39c12', '#16a085', '#c0392b', '#2c3e50']
+        
+        # Строим график для каждого значения beta
+        for i, (data, label) in enumerate(zip(convergence_data, labels)):
+            ax.plot(iterations, data, '-', label=label, color=colors[i % len(colors)], linewidth=2)
+        
+        ax.set_xlabel('Итерация')
+        ax.set_ylabel('Длина пути')
+        ax.set_title('Сходимость алгоритма для разных значений beta')
+        ax.grid(True, color='#cccccc', linestyle='--', alpha=0.7)
+        
+        # Настраиваем легенду
+        ax.legend(loc='upper right', fontsize='medium')
+        
+        self.plot_stack.addWidget(canvas)
+
+    def create_comparison_plot(self):
+        fig = Figure(facecolor='white')
+        canvas = FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        
+        # Настройка цветов для светлой темы
+        ax.set_facecolor('white')
+        fig.patch.set_facecolor('white')
+        ax.tick_params(colors='black')
+        ax.xaxis.label.set_color('black')
+        ax.yaxis.label.set_color('black')
+        ax.title.set_color('black')
+        
+        # Используем собранные данные
+        iterations, convergence_data, labels = self.comparison_data
+        
+        # Задаем цвета для линий (больше цветов для безопасности)
+        colors = ['#2980b9', '#e74c3c', '#27ae60', '#8e44ad', '#f39c12', '#16a085', '#c0392b', '#2c3e50']
         
         # Строим график для каждого набора параметров
         for i, (data, label) in enumerate(zip(convergence_data, labels)):
-            ax.plot(iterations, data, '-', label=label, color=colors[i])
+            ax.plot(iterations, data, '-', label=label, color=colors[i % len(colors)], linewidth=2)
         
         ax.set_xlabel('Итерация')
         ax.set_ylabel('Длина пути')
         ax.set_title('Сравнение разных параметров')
-        ax.grid(True, color='#cccccc')
-        ax.legend()
+        ax.grid(True, color='#cccccc', linestyle='--', alpha=0.7)
         
         # Настраиваем легенду
-        ax.legend(loc='upper right', fontsize='small')
+        ax.legend(loc='upper right', fontsize='medium')
         
         self.plot_stack.addWidget(canvas)
 
@@ -291,18 +357,17 @@ class AnalyticsWindow(QMainWindow):
         for button in self.buttons.values():
             button.setChecked(False)
         
-        # Выделяем нужную кнопку
-        button = list(self.buttons.values())[index]
-        button.setChecked(True)
+        # Устанавливаем выделение на нужную кнопку
+        button_list = list(self.buttons.values())
+        button_list[index].setChecked(True)
         
         # Показываем нужный график
         self.plot_stack.setCurrentIndex(index)
 
     def switch_to_main_window(self):
-        self.hide()  # Скрываем окно аналитики
-        self.main_window.show()  # Показываем главное окно
+        self.hide()
+        self.main_window.show()
 
     def closeEvent(self, event):
-        """Переопределяем событие закрытия окна"""
-        self.switch_to_main_window()
-        event.ignore()  # Игнорируем закрытие окна 
+        self.main_window.show()
+        event.accept() 
